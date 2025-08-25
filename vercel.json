@@ -1,0 +1,12 @@
+{
+"functions": {
+"api/*.ts": {
+"runtime": "nodejs18.x",
+"memory": 1024,
+"maxDuration": 20
+}
+},
+"routes": [
+{ "src": "/api/scrape", "dest": "/api/scrape.ts" }
+]
+}
