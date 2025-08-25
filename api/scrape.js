@@ -1,40 +1,34 @@
-import axios from "axios";
+import fetch from "node-fetch";
 import * as cheerio from "cheerio";
 
 export default async function handler(req, res) {
   try {
     const { url } = req.query;
     if (!url) {
-      return res.status(400).json({ error: "Missing url parameter" });
+      return res.status(400).json({ error: "Please provide ?url=" });
     }
 
-    // Fetch HTML
-    const { data } = await axios.get(url, {
+    // Fake browser headers (Amazon blocks default requests)
+    const response = await fetch(url, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-      },
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+      }
     });
 
-    const $ = cheerio.load(data);
+    const html = await response.text();
+    const $ = cheerio.load(html);
 
-    let result = {};
+    let title = $("title").first().text() || "N/A";
+    let price =
+      $("#priceblock_ourprice").text() ||
+      $("#priceblock_dealprice").text() ||
+      $(".a-price .a-offscreen").first().text() ||
+      $("._30jeq3").first().text() || // Flipkart
+      "Not Found";
 
-    if (url.includes("amazon")) {
-      result.title = $("#productTitle").text().trim();
-      result.price =
-        $("#priceblock_ourprice").text().trim() ||
-        $("#priceblock_dealprice").text().trim();
-    } else if (url.includes("flipkart")) {
-      result.title = $("span.B_NuCI").text().trim();
-      result.price = $("div._30jeq3._16Jk6d").first().text().trim();
-    } else {
-      result.title = $("title").text().trim();
-    }
-
-    res.status(200).json({ success: true, data: result });
+    res.json({ url, title, price });
   } catch (err) {
-    console.error(err.message);
     res.status(500).json({ error: "Scraping failed", details: err.message });
   }
 }
